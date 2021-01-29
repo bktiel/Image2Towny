@@ -23,10 +23,10 @@ public class TerritoryAssign {
     private final Image2Towny pluginInstance;
 
 
-    public TerritoryAssign(String imageFileName, String listFileName) throws InvalidNameException, AlreadyRegisteredException, NotRegisteredException{
+    public TerritoryAssign(String imageFileName, String listFileName) throws AlreadyRegisteredException, NotRegisteredException{
         this(0,0,imageFileName,listFileName,DEFAULT_REGION_SIZE);
     }
-    public TerritoryAssign(int x, int z, String imageFileName, String listFileName) throws InvalidNameException, AlreadyRegisteredException, NotRegisteredException{
+    public TerritoryAssign(int x, int z, String imageFileName, String listFileName) throws AlreadyRegisteredException, NotRegisteredException{
         this(x,z,imageFileName,listFileName,DEFAULT_REGION_SIZE);
     }
     /*
@@ -34,7 +34,7 @@ public class TerritoryAssign {
     to towns mapped to those colors in listFileName
     Creates a Town of each object and prepares an SQL statement for all related townblocks per Town.
      */
-    public TerritoryAssign(int startX, int startZ, String imageFileName, String listFileName, int regionSize) throws InvalidNameException, AlreadyRegisteredException, NotRegisteredException {
+    public TerritoryAssign(int startX, int startZ, String imageFileName, String listFileName, int regionSize) throws AlreadyRegisteredException, NotRegisteredException {
         //grab pluginInstance items
         this.pluginInstance=Image2Towny.getPlugin();
         imageFileName=pluginInstance.getDataFolder().getPath()+File.separator+imageFileName;
@@ -48,7 +48,7 @@ public class TerritoryAssign {
         //map names to hex colors by loading from listfile
         HashMap<String,String> mapTerritories =Image2Towny.getIOHandler().loadTerritories(listFileName);
         //create another hashmap to record all townblocks assoc w/ea town created
-        HashMap<Town,List<TownBlock>> newTowns = new HashMap<Town,List<TownBlock>>();
+        HashMap<Town,List<TownBlock>> newTowns = new HashMap<>();
 
         //slice image into manageable list of rects
         File imageFile=new File(imageFileName);
@@ -76,9 +76,9 @@ public class TerritoryAssign {
                     int majorityColor=0;
                     for (int chunky=0; chunky<16; chunky++) {
                         for (int chunkx = 0; chunkx < 16; chunkx++) {
-                            int thisColor = 0;
+                            int thisColor;
                             try {
-                                thisColor = Integer.parseInt(Integer.toHexString(sliceImage.getRGB(x + chunkx, y + chunky)).substring(2)) - 251337;
+                                thisColor = Integer.parseInt(Integer.toHexString(sliceImage.getRGB(x + chunkx, y + chunky)).substring(2));
                             } catch (Exception e) {
                                 continue;
                             }
@@ -195,7 +195,7 @@ public class TerritoryAssign {
         while (newname == null || universe.getResident(newname) != null) {
 
             Character randomLetter = letters.charAt((int) (Math.random() * letters.length()));
-            Document NPCNames = null;
+            Document NPCNames;
             try {
                 NPCNames = Jsoup.connect(
                         String.format("https://www.mithrilandmages.com/utilities/MedievalBrowse.php?letter=%c&fms=M",
