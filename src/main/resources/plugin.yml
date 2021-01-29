@@ -1,0 +1,11 @@
+name: image2towny
+version: 1.0
+api-version: 1.13
+main: com.realmtiel.image2towny.Image2Towny
+depend: [Towny]
+
+commands:
+  serf:
+    description: Serf things
+    usage: /serf
+    permission: serf
