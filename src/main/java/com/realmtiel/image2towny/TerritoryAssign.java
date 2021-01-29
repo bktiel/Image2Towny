@@ -11,10 +11,6 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 
-import javax.imageio.ImageIO;
-import javax.imageio.ImageReadParam;
-import javax.imageio.ImageReader;
-import javax.imageio.stream.ImageInputStream;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.*;
@@ -23,91 +19,52 @@ import java.util.*;
 import java.util.List;
 
 public class TerritoryAssign {
-    private final int REGION_SIZE=512;
+    private static final int DEFAULT_REGION_SIZE=512;
     private final Image2Towny pluginInstance;
-    public TerritoryAssign(String imagePath, String listFileName) throws InvalidNameException, AlreadyRegisteredException, NotRegisteredException {
+
+    public TerritoryAssign(String imageFileName, String listFileName) throws InvalidNameException, AlreadyRegisteredException, NotRegisteredException{
+        this(0,0,imageFileName,listFileName,DEFAULT_REGION_SIZE);
+    }
+    public TerritoryAssign(int x, int z, String imageFileName, String listFileName) throws InvalidNameException, AlreadyRegisteredException, NotRegisteredException{
+        this(x,z,imageFileName,listFileName,DEFAULT_REGION_SIZE);
+    }
+    public TerritoryAssign(int startX, int startZ, String imageFileName, String listFileName, int regionSize) throws InvalidNameException, AlreadyRegisteredException, NotRegisteredException {
+        //grab pluginInstance items
         this.pluginInstance=Image2Towny.getPlugin();
-        imagePath=pluginInstance.getDataFolder().getPath()+File.separator+imagePath;
+        imageFileName=pluginInstance.getDataFolder().getPath()+File.separator+imageFileName;
         listFileName=pluginInstance.getDataFolder().getPath()+File.separator+listFileName;
-
-//        BufferedImage territories =getImage(imagePath);
-
-//        BufferedImage territories = null;
-//        try {
-//            territories = BigBufferedImage.create(new File(imagePath), BufferedImage.TYPE_INT_RGB);
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//        }
+        TownyWorld world=pluginInstance.getUniverse().getDataSource().getWorld("world");
 
         //assessment starts from top left on the image
         //set this to the coords that pixel should be in the map so the right coordinates are grabbed
-        Point startingPoint = new Point(512,0);
+        Point startingPoint = new Point(startX,startZ);
 
-        //create storage object for every town
+        //map names to hex colors by loading from listfile
         HashMap<String,String> mapTerritories =Image2Towny.getIOHandler().loadTerritories(listFileName);
-//
-//        for (String terrName : mapTerritories.values()) {
-//            //create town objects for each territory
-//            TownCommand.newTown(null,terrName,);
-//        }
-        //create another hashmap to record
+        //create another hashmap to record all townblocks assoc w/ea town created
         HashMap<Town,List<TownBlock>> newTowns = new HashMap<Town,List<TownBlock>>();
 
-        //divide map into manageable bites
-        ImageInputStream img = null;
-        File imageFile=new File(imagePath);
+        //slice image into manageable list of rects
+        File imageFile=new File(imageFileName);
+        List<Rectangle> slices = null;
         try {
-            img = ImageIO.createImageInputStream(imageFile);
+            slices = Image2Towny.getIOHandler().subdivideImage(imageFile,startingPoint,regionSize);
         } catch (IOException e) {
             e.printStackTrace();
         }
-        //get reader for this kind of stream
-        ImageReader reader = ImageIO.getImageReaders(img).next();
-        reader.setInput(img);
-        //get dimensions by reading file header
-        int[] dimensions= new int[0];
-        try {
-            dimensions = new int[]{reader.getWidth(0), reader.getHeight(0)};
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        //separate image into slices (rectangles)
-        List<Rectangle> slices = new ArrayList<>();
-        for (int y = 0; y < dimensions[1];y+=REGION_SIZE) {
-            for (int x = 0; x < dimensions[0]; x+=REGION_SIZE) {
-                //tentatively go for slice of size region_size
-                int[] adjustment= new int[]{REGION_SIZE, REGION_SIZE};
-                //check if adding region size throws off x16 coordinates
-                //if so, subtract modulo iot get what number will restore
-                if ((startingPoint.x+x+adjustment[0])%16>0) {
-                    adjustment[0]=adjustment[0]-((x+startingPoint.x)%16);
-                }
-                if ((startingPoint.y+y+adjustment[1])%16>0) {
-                    adjustment[1]=adjustment[1]-((y+startingPoint.y)%16);
-                }
-                slices.add(
-                        new Rectangle(x,y,
-                                Math.min(REGION_SIZE,dimensions[0]-x),
-                                Math.min(REGION_SIZE,dimensions[1]-y))
-                );
 
-            }
-        }
-
-        TownyWorld world=pluginInstance.getUniverse().getDataSource().getWorld("world");
-
-        //keep tabs on invalid names
+        //keep tabs on invalid names to avoid trying to look them up
         List<String> invalidNames = new ArrayList<>();
-        //now for every slice, process
 
+        //now for every slice, process
         for (int sliceIndex=0;sliceIndex<slices.size();sliceIndex++){
             Rectangle slice=slices.get(sliceIndex);
             BufferedImage sliceImage= Image2Towny.getIOHandler().readImageSlice(imageFile, slice);
 
             //actual processing, go chunk by chunk
-            for (int y = 0; y < REGION_SIZE;y+=16) {
+            for (int y = 0; y < regionSize;y+=16) {
                 List<Town> sliceTowns= new ArrayList<>();
-                for (int x = 0; x < REGION_SIZE; x+=16) {
+                for (int x = 0; x < regionSize; x+=16) {
                     //get majority color within this chunk
                     HashMap<Integer,Integer> coloration=new HashMap<>();
                     int majorityColor=0;
@@ -126,7 +83,6 @@ public class TerritoryAssign {
                             }
                         }
                     }
-
                     //find thiscolor in the territories map to get a town name
                     String townName = null;
                     try {
@@ -161,11 +117,11 @@ public class TerritoryAssign {
                         if(!sliceTowns.contains(currentTown)){
                             sliceTowns.add(currentTown);
                         }
-
                     }
                     //now take this pixel, create new worldcoord, and add to list
                     List<TownBlock> targetList = newTowns.get(currentTown);
                     //need to add slice's coords on map to account for previous slices processed
+                    //also need to /16 here to match Towny's TownBlock coordinate system, which is /not/ abs world coords
                     TownBlock newBlock=new TownBlock(
                             (((int) slice.getX()) + x + (int) startingPoint.getX())/16,
                             (((int) slice.getY()) + y + (int) startingPoint.getY())/16,
@@ -173,166 +129,118 @@ public class TerritoryAssign {
                     if(!targetList.contains(newBlock)){
                         targetList.add(newBlock);
                     }
-//                                new WorldCoord("world",
-//                                        ((int) slice.getX()) + x + (int) startingPoint.getX(),
-//                                        ((int) slice.getY()) + y + (int) startingPoint.getY()
-//                                )
-//                        );
-                    //create claim objects for all towns in this slice
-//                    for(Town sliceTown: sliceTowns){
-//                        new TownClaim(
-//                                Towny.getPlugin(),
-//                                null,
-//                                sliceTown,
-//                                newTowns.get(sliceTown),
-//                                false,
-//                                true,
-//                                true
-//                        ).start();
-//                    }
                 }
             }
         }
-        //cleanup
-        reader.dispose();
-        try {
-            img.close();
+        //tasks to perform on all
+        try{
+            writeTownBlocksQuery(newTowns,world.getName());
+            prepareTowns(newTowns);
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
 
-        for(Town validTown:newTowns.keySet()){
-            //mayor stuff
-            String letters="ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-            TownyUniverse universe= pluginInstance.getUniverse();
-            String newname=null;
-            while(newname==null || universe.getResident(newname)!=null)
-            {
-
-                Character randomLetter=letters.charAt((int) (Math.random()*letters.length()));
-                Document NPCNames= null;
-                try {
-                    NPCNames = Jsoup.connect(
-                            String.format("https://www.mithrilandmages.com/utilities/MedievalBrowse.php?letter=%c&fms=M",
-                                    randomLetter)
-                    ).get();
-                    Element resultBox=NPCNames.select("body div#wrap div#content div#medNameColumns").get(0);
-                    String newnames[] = resultBox.text().split("\n<br>")[0].split(" ");
-                    newname=newnames[(int) (Math.random()*newnames.length)];
-                } catch (IOException | NullPointerException e) {
-                    e.printStackTrace();
-                }
-
-            }
-            final UUID npcUUID = UUID.randomUUID();
-            universe.getDataSource().newResident(newname, npcUUID);
-
-            Resident newMayor = universe.getResident(npcUUID);
-
-            assert newMayor != null;
-            newMayor.setRegistered(System.currentTimeMillis());
-            newMayor.setLastOnline(0);
-            newMayor.setNPC(true);
-            validTown.setMayor(newMayor);
-            newMayor.setTown(validTown);
-            newMayor.save();
+    /*
+    For every town created by the class, set mayor and other properties to comply with Towny logic
+     */
+    public void prepareTowns(HashMap<Town,List<TownBlock>> newTowns) throws AlreadyRegisteredException, NotRegisteredException {
+        for (Town validTown : newTowns.keySet()) {
+            //set mayor
+            setMayor(validTown);
+            //set miscellaneous properties
             validTown.setHasUpkeep(false);
-
-//            TownyWorld world=pluginInstance.getUniverse().getDataSource().getWorld("world");
+            validTown.setRuined(false);
+            validTown.setPublic(true);
+            validTown.setOpen(true);
             validTown.setRegistered(System.currentTimeMillis());
-            List<TownBlock> coordList=newTowns.get(validTown);
-            TownBlock homeblock= coordList.get(Math.floorDiv(coordList.size(), 2));
-            //coordList.remove(homeblock);
-            Location spawnLoc;
-            spawnLoc=(Objects.requireNonNull(Bukkit.getWorld("world")).
-                    getHighestBlockAt(homeblock.getX()*16,homeblock.getZ()*16).getLocation());
-            spawnLoc.setY(spawnLoc.getY()+1);
-//            //set homeblock
-//            TownBlock homeblock=new TownBlock(spawnLoc.getBlockX(),
-//                    spawnLoc.getBlockZ(),
-//                    world
-//            );
+            //find and locate homeblock from townblocks registered with towns (halfway)
+            List<TownBlock> coordList = newTowns.get(validTown);
+            TownBlock homeblock = coordList.get(Math.floorDiv(coordList.size(), 2));
+            //need to convert to location here to get highest block at a point using Bukkit api
+            Location spawnLoc = (Objects.requireNonNull(Bukkit.getWorld("world")).
+                    getHighestBlockAt(homeblock.getX() * 16, homeblock.getZ() * 16).getLocation()
+            );
+            //one block higher just to be safe
+            spawnLoc.setY(spawnLoc.getY() + 1);
             homeblock.setTown(validTown);
             homeblock.save();
-
-            //grab the townblock closest to desired spawn locations
-//            TownBlock homeblock=pluginInstance.getUniverse().getTownBlock(spawnCoord);
-            //set spawn
+            //set spawn and homeblock
             try {
                 validTown.setHomeBlock(homeblock);
                 validTown.forceSetSpawn(spawnLoc);
             } catch (TownyException e) {
                 e.printStackTrace();
             }
-            validTown.setHasUpkeep(false);
-            //remove homeblock from being claimed again
-//            coordList.remove(spawnCoord);
             //debug message
-            pluginInstance.getLogger().info(String.format("[Serfdom] Loading and saving %s", validTown.getName()));
-            //for every block, claim
-
-//            for (WorldCoord claim : coordList) {
-//                //skip spawn
-//                if(claim==spawnCoord) {continue;}
-//
-//                TownBlock newBlock = new TownBlock(claim.getX(),claim.getZ(),world);
-//                newBlock.setTown(validTown);
-//                newBlock.setPlotPrice(500);
-//                newBlock.save();
-//            }
-            validTown.setRuined(false);
-            validTown.setPublic(true);
-            validTown.setOpen(true);
+            pluginInstance.getLogger().info(String.format("[Serfdom] saving new town %s", validTown.getName()));
             validTown.save();
-
-//            new TownClaim(Towny.getPlugin(),
-//                    null,
-//                    validTown,
-//                    newTowns.get(validTown),
-//                false,
-//                true,
-//                true).start();
         }
     }
 
-    //claim for one region right now
-//        Town targetTown=pluginInstance.getUniverse().getTown("Prague");
-//        new TownClaim(Towny.getPlugin(),
-//                null,
-//                targetTown,
-//                newTowns.get(targetTown),
-//                false,
-//                true,
-//                true);
-//    }
+    /*
+    Sets the NPC mayor of a town. Uses web endpoint as applicable TODO: add load from file as an option?
+     */
+    public void setMayor(Town targetTown) throws AlreadyRegisteredException, NotRegisteredException {
+        //mayor stuff
+        String letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        TownyUniverse universe = pluginInstance.getUniverse();
+        String newname = null;
+        while (newname == null || universe.getResident(newname) != null) {
 
-    public void writeTownBlocksQuery(HashMap<Town,List<TownBlock>> newTowns,String worldName){
+            Character randomLetter = letters.charAt((int) (Math.random() * letters.length()));
+            Document NPCNames = null;
+            try {
+                NPCNames = Jsoup.connect(
+                        String.format("https://www.mithrilandmages.com/utilities/MedievalBrowse.php?letter=%c&fms=M",
+                                randomLetter)
+                ).get();
+                Element resultBox = NPCNames.select("body div#wrap div#content div#medNameColumns").get(0);
+                String[] newnames = resultBox.text().split("\n<br>")[0].split(" ");
+                newname = newnames[(int) (Math.random() * newnames.length)];
+            } catch (IOException | NullPointerException e) {
+                e.printStackTrace();
+            }
+
+        }
+        final UUID npcUUID = UUID.randomUUID();
+        universe.getDataSource().newResident(newname, npcUUID);
+        Resident newMayor = universe.getResident(npcUUID);
+        assert newMayor != null;
+
+        newMayor.setRegistered(System.currentTimeMillis());
+        newMayor.setLastOnline(0);
+        newMayor.setNPC(true);
+        targetTown.setMayor(newMayor);
+        newMayor.setTown(targetTown);
+        newMayor.save();
+    }
+
+
+    public void writeTownBlocksQuery(HashMap<Town,List<TownBlock>> newTowns,String worldName) throws IOException {
         //write sql for townblocks
         String townBlocksQuery="INSERT INTO towny_townblocks (world,x,z,price,town,type,outpost,permissions,locked,changed) VALUES\n";
         String component="(\"%s\",%d,%d,0,\"%s\",0,0,\"\",0,0)";
-        try {
-            FileWriter writer = new FileWriter(pluginInstance.getDataFolder()+File.separator+"townblocks.sql", StandardCharsets.UTF_8);
-            for(Town town:newTowns.keySet()){
-                writer.write(String.format("\n\n/* %s */\n",town.getName()));
-                writer.write(townBlocksQuery+'\n');
-                List<TownBlock> blocklist = newTowns.get(town);
-                for(int i=0;i< blocklist.size();i++){
-                    //write every block as part of this insert query
-                    TownBlock block=blocklist.get(i);
-                    writer.write(String.format(component,worldName,block.getX(),block.getZ(),town.getName()));
-                    //add comma
-                    if(i!=blocklist.size()-1){
-                        writer.write(",\n");
-                    }
-                    else
-                    {
-                        writer.write(";\n");
-                    }
+        FileWriter writer = new FileWriter(pluginInstance.getDataFolder()+File.separator+"townblocks.sql", StandardCharsets.UTF_8);
+        for(Town town:newTowns.keySet()){
+            writer.write(String.format("\n\n/* %s */\n",town.getName()));
+            writer.write(townBlocksQuery+'\n');
+            List<TownBlock> blocklist = newTowns.get(town);
+            for(int i=0;i< blocklist.size();i++){
+                //write every block as part of this insert query
+                TownBlock block=blocklist.get(i);
+                writer.write(String.format(component,worldName,block.getX(),block.getZ(),town.getName()));
+                //add comma, don't if last VALUE in the query
+                if(i!=blocklist.size()-1){
+                    writer.write(",\n");
+                }
+                else
+                {
+                    writer.write(";\n");
                 }
             }
-            writer.close();
-        } catch (IOException e) {
-            e.printStackTrace();
         }
+        writer.close();
+        pluginInstance.getLogger().info("[Image2Towny] Write to ./image2towny/townblocks.sql complete. Remember to run it against your towny database!");
     }
 }

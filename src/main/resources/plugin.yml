@@ -5,7 +5,7 @@ main: com.realmtiel.image2towny.Image2Towny
 depend: [Towny]
 
 commands:
-  serf:
-    description: Serf things
-    usage: /serf
-    permission: serf
+  imgtowny:
+    description: Image2Towny commands
+    usage: /imgtowny
+    permission: imgtowny

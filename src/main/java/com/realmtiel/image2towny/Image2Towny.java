@@ -7,6 +7,8 @@ import com.palmergames.bukkit.towny.exceptions.NotRegisteredException;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.util.Objects;
+
 public class Image2Towny extends JavaPlugin {
     private static Image2Towny plugin;
     private static IOHandler iohandler;
@@ -14,8 +16,6 @@ public class Image2Towny extends JavaPlugin {
     public Image2Towny(){
         plugin=this;
     }
-
-
 
     @Override
     public void onEnable() {
@@ -26,12 +26,8 @@ public class Image2Towny extends JavaPlugin {
 
         iohandler=new IOHandler();
 
-        //main plugin functionality in TerritoryAssign class
-        try {
-            TerritoryAssign test = new TerritoryAssign("out.tif","sectors.txt");
-        } catch (InvalidNameException | AlreadyRegisteredException | NotRegisteredException e) {
-            e.printStackTrace();
-        }
+        //register command
+        Objects.requireNonNull(this.getCommand("imgtowny")).setExecutor(new Image2TownyCommands());
 
     }
     @Override
