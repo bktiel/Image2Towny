@@ -1,9 +1,6 @@
 package com.realmtiel.image2towny;
 
 import com.palmergames.bukkit.towny.TownyUniverse;
-import com.palmergames.bukkit.towny.exceptions.AlreadyRegisteredException;
-import com.palmergames.bukkit.towny.exceptions.InvalidNameException;
-import com.palmergames.bukkit.towny.exceptions.NotRegisteredException;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 

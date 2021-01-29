@@ -1,25 +1,17 @@
 package com.realmtiel.image2towny;
 
-import com.palmergames.bukkit.towny.exceptions.AlreadyRegisteredException;
-import com.palmergames.bukkit.towny.exceptions.InvalidNameException;
-import com.palmergames.bukkit.towny.exceptions.NotRegisteredException;
-import com.palmergames.bukkit.util.Colors;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 
-import com.realmtiel.image2towny.TerritoryAssign;
-
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.Locale;
 import java.util.stream.Collectors;
 
 public class Image2TownyCommands implements CommandExecutor, TabCompleter {

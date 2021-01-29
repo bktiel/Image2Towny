@@ -22,12 +22,18 @@ public class TerritoryAssign {
     private static final int DEFAULT_REGION_SIZE=512;
     private final Image2Towny pluginInstance;
 
+
     public TerritoryAssign(String imageFileName, String listFileName) throws InvalidNameException, AlreadyRegisteredException, NotRegisteredException{
         this(0,0,imageFileName,listFileName,DEFAULT_REGION_SIZE);
     }
     public TerritoryAssign(int x, int z, String imageFileName, String listFileName) throws InvalidNameException, AlreadyRegisteredException, NotRegisteredException{
         this(x,z,imageFileName,listFileName,DEFAULT_REGION_SIZE);
     }
+    /*
+    Given starting X and Z coordinates, read passed imageFileName in chunks of regionSize and match hex colored pixels
+    to towns mapped to those colors in listFileName
+    Creates a Town of each object and prepares an SQL statement for all related townblocks per Town.
+     */
     public TerritoryAssign(int startX, int startZ, String imageFileName, String listFileName, int regionSize) throws InvalidNameException, AlreadyRegisteredException, NotRegisteredException {
         //grab pluginInstance items
         this.pluginInstance=Image2Towny.getPlugin();
@@ -216,7 +222,9 @@ public class TerritoryAssign {
         newMayor.save();
     }
 
-
+    /*
+    Write townblocks calculated to townblocks.sql in the plugin folder (consolidated SQL query)
+     */
     public void writeTownBlocksQuery(HashMap<Town,List<TownBlock>> newTowns,String worldName) throws IOException {
         //write sql for townblocks
         String townBlocksQuery="INSERT INTO towny_townblocks (world,x,z,price,town,type,outpost,permissions,locked,changed) VALUES\n";
