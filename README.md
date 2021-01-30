@@ -7,6 +7,6 @@ Examples for this are in the /examples folder
 After installing the plugin, run /imgtowny with arguments to start processing. This may take a while.
 
 Lastly, once everything is done, you'll need to run townblocks.sql in the output folder against the Towny install's MySQL database. 
-Everything else should populate automatically (there are two many transactions in townblocks for larger maps to do this through Towny's SQL prepared statements).
+Everything else should populate automatically (there are too many transactions in townblocks for larger maps to do this through Towny's SQL prepared statements).
 
 Restarting the server or doing /ta reload all will load the generated Towns. 
